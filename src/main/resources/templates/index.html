@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>音频播放器</title>
+    <meta charset="UTF-8">
+    <style>
+        .player-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .controls {
+            margin: 20px 0;
+        }
+        #playlist {
+            margin-top: 20px;
+        }
+        .audio-item {
+            display: flex;
+            flex-direction: column;
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            background-color: #f9f9f9;
+            margin-bottom: 10px;
+            border-radius: 5px;
+        }
+        .audio-info {
+            margin-bottom: 10px;
+        }
+        .audio-controls {
+            display: flex;
+            gap: 10px;
+        }
+        .audio-player {
+            width: 100%;
+            margin: 10px 0;
+        }
+        .btn {
+            padding: 5px 10px;
+            cursor: pointer;
+            border: none;
+            border-radius: 4px;
+        }
+        .btn-delete {
+            background-color: #ff9800;
+            color: white;
+        }
+        .scheduled-time {
+            color: #666;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="player-container">
+        <h1>音频播放器</h1>
+        
+        <div class="controls">
+            <input type="file" id="audioFile" accept=".mp3,.mpeg,.mpg">
+            <input type="datetime-local" id="scheduleTime">
+            <button onclick="scheduleAudio()" class="btn btn-play">设置定时播放</button>
+        </div>
+        
+        <div id="playlist"></div>
+    </div>
+
+    <script>
+        function scheduleAudio() {
+            const audioFile = document.getElementById('audioFile').files[0];
+            const scheduleTime = document.getElementById('scheduleTime').value;
+            
+            if (!audioFile || !scheduleTime) {
+                alert('请选择音频文件并设置时间！');
+                return;
+            }
+            
+            // 验证文件扩展名
+            const fileName = audioFile.name.toLowerCase();
+            if (!fileName.endsWith('.mp3') && !fileName.endsWith('.mpeg') && !fileName.endsWith('.mpg')) {
+                alert('请选择MP3或MPEG格式的音频文件！');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', audioFile);
+            formData.append('scheduleTime', scheduleTime);
+
+            fetch('/api/audio/schedule', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('上传失败');
+                }
+                return response.json();
+            })
+            .then(data => {
+                alert('定时播放设置成功！');
+                updatePlaylist();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('设置失败，请确保文件格式正确！');
+            });
+        }
+
+        function deleteAudio(id) {
+            if (!confirm('确定要删除这个音频文件吗？')) {
+                return;
+            }
+            
+            fetch(`/api/audio/${id}`, {
+                method: 'DELETE'
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('删除失败');
+                }
+                return response.json();
+            })
+            .then(data => {
+                alert(data.message);
+                updatePlaylist();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('删除失败，请重试！');
+            });
+        }
+
+        function formatDateTime(dateTimeStr) {
+            const dt = new Date(dateTimeStr);
+            return dt.toLocaleString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        function playAudio(id) {
+            fetch(`/api/audio/play/${id}`, {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert('服务器开始播放音频');
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('服务器播放失败！');
+            });
+        }
+        
+        function stopAudio() {
+            fetch('/api/audio/stop', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert('服务器停止播放音频');
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('停止失败！');
+            });
+        }
+
+        function updatePlaylist() {
+            fetch('/api/audio/playlist')
+            .then(response => response.json())
+            .then(data => {
+                const playlist = document.getElementById('playlist');
+                playlist.innerHTML = '<h2>播放列表</h2>';
+                data.forEach(audio => {
+                    playlist.innerHTML += `
+                        <div class="audio-item">
+                            <div class="audio-info">
+                                <h3>${audio.fileName}</h3>
+                                <p class="scheduled-time">计划播放时间: ${formatDateTime(audio.scheduledTime)}</p>
+                            </div>
+                            <audio class="audio-player" controls>
+                                <source src="/api/audio/stream/${audio.id}" type="audio/mpeg">
+                                您的浏览器不支持音频播放
+                            </audio>
+                            <div class="audio-controls">
+                                <button onclick="playAudio(${audio.id})" class="btn btn-play">服务器播放</button>
+                                <button onclick="stopAudio()" class="btn btn-stop">服务器停止</button>
+                                <button onclick="deleteAudio(${audio.id})" class="btn btn-delete">删除</button>
+                            </div>
+                        </div>
+                    `;
+                });
+            });
+        }
+
+        // 页面加载时获取播放列表
+        document.addEventListener('DOMContentLoaded', updatePlaylist);
+    </script>
+</body>
+</html> 

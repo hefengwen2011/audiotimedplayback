@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>音频播放器</title>
+    <meta charset="UTF-8">
+</head>
+<body>
+    <div class="player-container">
+        <audio id="audioPlayer" controls>
+            您的浏览器不支持音频播放器
+        </audio>
+
+        <div class="controls">
+            <input type="file" id="audioFile" accept="audio/*">
+            <input type="datetime-local" id="scheduleTime">
+            <button onclick="scheduleAudio()">设置定时播放</button>
+        </div>
+
+        <div id="playlist"></div>
+    </div>
+
+    <script>
+        function scheduleAudio() {
+            const audioFile = document.getElementById('audioFile').files[0];
+            const scheduleTime = document.getElementById('scheduleTime').value;
+
+            if (!audioFile || !scheduleTime) {
+                alert('请选择音频文件并设置时间！');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', audioFile);
+            formData.append('scheduleTime', scheduleTime);
+
+            fetch('/api/audio/schedule', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert('定时播放设置成功！');
+                updatePlaylist();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('设置失败，请重试！');
+            });
+        }
+
+        function updatePlaylist() {
+            fetch('/api/audio/playlist')
+            .then(response => response.json())
+            .then(data => {
+                const playlist = document.getElementById('playlist');
+                playlist.innerHTML = '';
+                data.forEach(audio => {
+                    playlist.innerHTML += `
+                        <div>
+                            <p>${audio.fileName} - 计划播放时间: ${audio.scheduledTime}</p>
+                        </div>
+                    `;
+                });
+            });
+        }
+    </script>
+</body>
+</html>

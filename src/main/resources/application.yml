@@ -1,0 +1,21 @@
+spring:
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+      enabled: true
+      file-size-threshold: 2KB
+  thymeleaf:
+    cache: false
+
+server:
+  port: 8080
+
+# 自定义配置
+audio:
+  upload-dir: ./uploads
+  allowed-types:
+    - audio/mpeg
+    - audio/x-mpeg
+    - audio/mpeg3
+    - audio/x-mpeg3 
